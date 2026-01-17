@@ -1,6 +1,11 @@
-__pycache__/
-*.pyc
+# Python
+**/__pycache__/
+*.py[cod]
 venv/
 .env
+
+# macOS
 .DS_Store
-reports/*.html
+
+# Generated outputs
+reports/
