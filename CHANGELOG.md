@@ -7,6 +7,25 @@ and this project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
 ---
 
+## [1.9.5] - 2026-01-17
+
+### Added
+
+- Project structure checks (README, LICENSE, .gitignore, requirements)
+- Dangerous function detection (eval, exec, system, shell_exec, passthru)
+- Debug artifact detection (var_dump, print_r, die, dd)
+- Generic code hygiene checks (long lines, trailing whitespace)
+
+### Improved
+
+- Scanner rule coverage and accuracy
+- Finding explanations and actionable recommendations
+- Overall scan depth for PHP projects
+
+### Notes
+
+- This release significantly expands static analysis capabilities.
+
 ## [1.9.4] – Small Improvements
 
 ### Improved

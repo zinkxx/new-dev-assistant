@@ -45,6 +45,19 @@ EMAIL_PATTERN = re.compile(
 )
 
 IGNORE_FILE_MARKER = "@zinkx-ignore-security"
+DANGEROUS_FUNCS = [
+    "eval(",
+    "exec(",
+    "shell_exec(",
+    "system(",
+    "passthru(",
+]
+DEBUG_ARTIFACTS = [
+    "var_dump(",
+    "print_r(",
+    "die(",
+    "dd(",
+]
 
 
 # --------------------------------------------------
@@ -52,11 +65,15 @@ IGNORE_FILE_MARKER = "@zinkx-ignore-security"
 # --------------------------------------------------
 @dataclass
 class Finding:
-    kind: str            # RISK | TODO | INFO
-    title: str
-    detail: str
+    kind: str                    # RISK | TODO | INFO
+    title: str                   # Kısa başlık
+    detail: str                  # Bulunan satır / özet
     path: str
     line: int | None = None
+
+    explanation: str | None = None     # ❓ Neden bu bir sorun
+    recommendation: str | None = None  # ✅ Ne yapılmalı
+
 
 
 # --------------------------------------------------
@@ -142,11 +159,52 @@ def scan_project(
             gi = _safe_read_text(gitignore) if gitignore.exists() else ""
             if ".env" not in gi:
                 findings.append(Finding(
-                    "RISK",
-                    ".env may be tracked",
-                    "Project has .env but .gitignore does not mention it.",
-                    str(env_file),
+                    kind="RISK",
+                    title=".env may be tracked",
+                    detail="Project has .env but .gitignore does not mention it.",
+                    path=str(env_file),
+
+                    explanation=(
+                        ".env files usually contain secrets such as database "
+                        "credentials or API keys. If tracked by Git, these "
+                        "secrets may leak."
+                    ),
+                    recommendation=(
+                        "Add `.env` to your .gitignore file and rotate any "
+                        "secrets that may have been exposed."
+                    ),
                 ))
+    # --------------------------------------------------
+    # 1B) Project structure checks (root-level hygiene)
+    # --------------------------------------------------
+    # README / LICENSE / requirements.txt / .gitignore gibi temel dosyalar
+    root_checks = [
+        ("README.md", "INFO", "Missing README.md",
+         "README helps others understand and use the project.",
+         "Create a README.md explaining setup, usage, and features."),
+        ("LICENSE", "INFO", "Missing LICENSE",
+         "A license clarifies how others can use your code.",
+         "Add a LICENSE file (e.g., MIT) to define usage rights."),
+        (".gitignore", "INFO", "Missing .gitignore",
+         "Without .gitignore, sensitive or bulky files may be committed.",
+         "Add a .gitignore suitable for your stack (Python, Node, etc.)."),
+        ("requirements.txt", "INFO", "Missing requirements.txt",
+         "Dependencies are unclear without a requirements file.",
+         "Add requirements.txt (pip freeze) or use pyproject.toml."),
+    ]
+
+    for filename, kind, title, explanation, recommendation in root_checks:
+        f = rootp / filename
+        if not f.exists():
+            findings.append(Finding(
+                kind=kind,
+                title=title,
+                detail=f"{filename} not found in project root.",
+                path=str(f),
+                explanation=explanation,
+                recommendation=recommendation,
+            ))
+
 
     # --------------------------------------------------
     # 2️⃣ File scanning
@@ -171,6 +229,38 @@ def scan_project(
             continue
 
         lines = text.splitlines()
+        # ----------------------------------------------
+        # General checks (language-agnostic)
+        # ----------------------------------------------
+        # Çok uzun satır / trailing whitespace gibi hijyen kontrolleri
+        for i, line in enumerate(lines, start=1):
+            low = line.lower()
+            if any(m in low for m in ignore_markers):
+                continue
+
+            # Long line (readability)
+            if len(line) > 240:
+                findings.append(Finding(
+                    kind="INFO",
+                    title="Long line",
+                    detail=line.strip()[:240],
+                    path=str(p),
+                    line=i,
+                    explanation="Very long lines reduce readability and make reviews harder.",
+                    recommendation="Consider wrapping the line or refactoring into smaller pieces.",
+                ))
+
+            # Trailing whitespace (cleanliness)
+            if line.rstrip("\n\r") != line.rstrip("\n\r ").rstrip("\t"):
+                findings.append(Finding(
+                    kind="INFO",
+                    title="Trailing whitespace",
+                    detail=line.strip()[:240],
+                    path=str(p),
+                    line=i,
+                    explanation="Trailing whitespace creates noisy diffs and reduces code clarity.",
+                    recommendation="Trim trailing spaces/tabs (editor setting: trim on save).",
+                ))
 
         # ----------------------------------------------
         # TODO / FIXME
@@ -180,14 +270,26 @@ def scan_project(
             if any(m in low for m in ignore_markers):
                 continue
 
-            if "todo" in low or "fixme" in low:
+            tags = ["todo", "fixme", "hack", "bug", "xxx", "note", "optimize"]
+            if any(t in low for t in tags):
+
                 findings.append(Finding(
-                    "TODO",
-                    "TODO/FIXME found",
-                    line.strip()[:240],
-                    str(p),
+                    kind="TODO",
+                    title="Dev note found (TODO/FIXME/HACK/BUG)",
+                    detail=line.strip()[:240],
+                    path=str(p),
                     line=i,
+
+                    explanation=(
+                        "TODO or FIXME comments indicate unfinished or temporary "
+                        "code that may be forgotten over time."
+                    ),
+                    recommendation=(
+                        "Review this comment and either complete the implementation "
+                        "or remove the TODO/FIXME if it is no longer needed."
+                    ),
                 ))
+        
 
         # ----------------------------------------------
         # PHP specific checks
@@ -202,43 +304,117 @@ def scan_project(
                     if pat.search(line):
                         severity = "RISK" if mode == SCAN_PROD else "INFO"
                         findings.append(Finding(
-                            severity,
-                            "Hardcoded secret",
-                            line.strip()[:240],
-                            str(p),
+                            kind=severity,
+                            title="Hardcoded secret",
+                            detail=line.strip()[:240],
+                            path=str(p),
                             line=i,
+
+                            explanation=(
+                                "Hardcoded secrets in source code can be exposed through "
+                                "version control, logs, or error messages."
+                            ),
+                            recommendation=(
+                                "Move this secret to an environment variable or a secure "
+                                "secret manager and remove it from the source code."
+                            ),
                         ))
                         break
+                
+                                # ----------------------------------------------
+                # Debug artifacts (var_dump, print_r, die, dd)
+                # ----------------------------------------------
+                for dbg in DEBUG_ARTIFACTS:
+                    if dbg in low:
+                        severity = "RISK" if mode == SCAN_PROD else "INFO"
+                        findings.append(Finding(
+                            kind=severity,
+                            title="Debug artifact found",
+                            detail=line.strip()[:240],
+                            path=str(p),
+                            line=i,
+                            explanation="Debug calls left in code can expose data and break execution flow.",
+                            recommendation="Remove debug calls or guard them behind a debug flag.",
+                        ))
+                        break
+
+                # ----------------------------------------------
+                # Dangerous functions (eval/system/exec etc.)
+                # ----------------------------------------------
+                for fn in DANGEROUS_FUNCS:
+                    if fn in low:
+                        severity = "RISK"  # her zaman risk
+                        findings.append(Finding(
+                            kind=severity,
+                            title="Dangerous function usage",
+                            detail=line.strip()[:240],
+                            path=str(p),
+                            line=i,
+                            explanation="Functions like eval/exec/system can lead to RCE if input is not strictly controlled.",
+                            recommendation="Avoid these functions; if unavoidable, validate/escape input and restrict execution.",
+                        ))
+                        break
+
 
                 if EMAIL_PATTERN.search(line):
                     if ".env" not in p.name.lower():
                         findings.append(Finding(
-                            "INFO",
-                            "Hardcoded email",
-                            line.strip()[:240],
-                            str(p),
+                            kind="INFO",
+                            title="Hardcoded email",
+                            detail=line.strip()[:240],
+                            path=str(p),
                             line=i,
+
+                            explanation=(
+                                "Email addresses hardcoded in source files may expose "
+                                "personal data or become outdated."
+                            ),
+                            recommendation=(
+                                "Move email addresses to configuration files or "
+                                "environment variables if possible."
+                            ),
                         ))
+
 
                 if "display_errors" in low and "ini_set" in low:
                     severity = "RISK" if mode == SCAN_PROD else "INFO"
                     findings.append(Finding(
-                        severity,
-                        "display_errors enabled",
-                        line.strip()[:240],
-                        str(p),
+                        kind=severity,
+                        title="display_errors enabled",
+                        detail=line.strip()[:240],
+                        path=str(p),
                         line=i,
+
+                        explanation=(
+                            "display_errors enabled may expose stack traces or "
+                            "sensitive application details to users."
+                        ),
+                        recommendation=(
+                            "Disable display_errors in production and log errors "
+                            "to a secure location instead."
+                        ),
                     ))
+
 
                 if "error_reporting" in low and "e_all" in low:
                     severity = "RISK" if mode == SCAN_PROD else "INFO"
                     findings.append(Finding(
-                        severity,
-                        "error_reporting(E_ALL)",
-                        line.strip()[:240],
-                        str(p),
+                        kind=severity,
+                        title="error_reporting(E_ALL)",
+                        detail=line.strip()[:240],
+                        path=str(p),
                         line=i,
+
+                        explanation=(
+                            "error_reporting(E_ALL) may reveal notices and warnings "
+                            "that are not intended for end users."
+                        ),
+                        recommendation=(
+                            "Limit error reporting in production environments "
+                            "and use logging for diagnostics."
+                        ),
                     ))
+
 
         # ----------------------------------------------
         # Large file warning
@@ -247,10 +423,19 @@ def scan_project(
             size = p.stat().st_size
             if size > 700_000:
                 findings.append(Finding(
-                    "INFO",
-                    "Large file",
-                    f"File is {size / 1024:.0f} KB",
-                    str(p),
+                    kind="INFO",
+                    title="Large file",
+                    detail=f"File is {size / 1024:.0f} KB",
+                    path=str(p),
+
+                    explanation=(
+                        "Very large source files can negatively impact "
+                        "readability, maintainability, and performance."
+                    ),
+                    recommendation=(
+                        "Consider splitting this file into smaller modules "
+                        "with clear responsibilities."
+                    ),
                 ))
         except Exception:
             pass
