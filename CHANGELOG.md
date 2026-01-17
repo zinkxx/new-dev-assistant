@@ -7,6 +7,27 @@ and this project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
 ---
 
+## [2.0.0] – Clean Stable Baseline
+
+### Added
+
+- Stable dashboard & risk summary
+- Health scoring finalized
+- Automatic release workflow baseline
+
+### Fixed
+
+- Scanner Finding initialization
+- UI duplicate window issue
+- Git hygiene issues
+
+### Changed
+
+- Repository cleanup
+- .gitignore hardened
+
+This release is the new long-term baseline.
+
 ## v1.9.9 – Stable Release
 
 ### Fixed
