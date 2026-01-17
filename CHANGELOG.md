@@ -7,6 +7,18 @@ and this project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
 ---
 
+## [1.9.6] - 2026-01-17
+
+### Fixed
+
+- Fixed an issue where a second application window was opened after scan completion.
+- Improved IPC command handling to prevent duplicate window lifecycle actions.
+
+### Internal
+
+- Cleaned up `poll_commands` logic.
+- Stabilized scan completion UI flow.
+
 ## [1.9.5] - 2026-01-17
 
 ### Added

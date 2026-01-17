@@ -16,7 +16,7 @@ import qtawesome as qta
 from qt_material import apply_stylesheet
 
 from ipc import send_command, read_status, read_command, clear_command
-from config import load_config, save_config
+from config import load_config, save_config, APP_META
 from PySide6.QtGui import QPalette
 
 
@@ -48,7 +48,9 @@ class MainWindow(QMainWindow):
         # --------------------------------------------------
         # Window
         # --------------------------------------------------
-        self.setWindowTitle("Zinkx Dev Assistant")
+        self.setWindowTitle(
+            f"{APP_META['name']} v{APP_META['version']}"
+        )
         self.setMinimumSize(1050, 650)
 
         base_dir = os.path.dirname(__file__)
@@ -178,11 +180,16 @@ class MainWindow(QMainWindow):
 
         # --- App info text
         footer_text = QLabel(
-            "<div style='line-height:1.4'>"
-            "<b>Zinkx Dev Assistant</b><br>"
-            "<span style='color:#94a3b8;font-size:11px'>v1.9.3 · Security Scanner</span>"
-            "</div>"
+            f"""
+            <div style='line-height:1.4'>
+                <b>{APP_META['name']}</b><br>
+                <span style='color:#94a3b8;font-size:11px'>
+                    v{APP_META['version']} · Security Scanner
+                </span>
+            </div>
+            """
         )
+
 
         footer_layout.addWidget(icon_label)
         footer_layout.addWidget(footer_text)
@@ -1111,11 +1118,14 @@ class MainWindow(QMainWindow):
         # ---------------- Application Info ----------------
         info, inf = card("Application")
         inf.addWidget(QLabel(
-            "<span style='color:#94a3b8;font-size:12px'>"
-            "Zinkx Dev Assistant v1.9.3<br>"
-            "Local static code & security analyzer"
-            "</span>"
+            f"""
+            <span style='color:#94a3b8;font-size:12px'>
+                {APP_META['name']} v{APP_META['version']}<br>
+                Local static code & security analyzer
+            </span>
+            """
         ))
+
 
         content_layout.addWidget(info)
         content_layout.addStretch()
@@ -1590,11 +1600,16 @@ class MainWindow(QMainWindow):
 
     def poll_commands(self):
         cmd = read_command()
-        if cmd and cmd.get("action") == "show_window":
-            clear_command()
-            self.show()
+        if not cmd:
+            return
+
+        if cmd.get("action") == "focus":
             self.raise_()
             self.activateWindow()
+
+        clear_command()
+
+
 # ==================================================
 # Toast Notification
 # ==================================================
