@@ -96,3 +96,5 @@ MIT License
 ## ✨ Geliştirici
 
 **Zinkx**
+
+> Baseline documentation as of v2.0.0
