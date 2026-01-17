@@ -58,6 +58,13 @@ DEBUG_ARTIFACTS = [
     "die(",
     "dd(",
 ]
+SEVERITY_SCORES = {
+    "CRITICAL": 25,
+    "HIGH": 15,
+    "MEDIUM": 8,
+    "LOW": 3,
+}
+
 
 
 # --------------------------------------------------
@@ -66,14 +73,16 @@ DEBUG_ARTIFACTS = [
 @dataclass
 class Finding:
     kind: str                    # RISK | TODO | INFO
-    title: str                   # Kısa başlık
-    detail: str                  # Bulunan satır / özet
+    severity: str                # CRITICAL | HIGH | MEDIUM | LOW
+    score: int                   # risk score impact
+
+    title: str
+    detail: str
     path: str
     line: int | None = None
 
-    explanation: str | None = None     # ❓ Neden bu bir sorun
-    recommendation: str | None = None  # ✅ Ne yapılmalı
-
+    explanation: str | None = None
+    recommendation: str | None = None
 
 
 # --------------------------------------------------
@@ -160,20 +169,22 @@ def scan_project(
             if ".env" not in gi:
                 findings.append(Finding(
                     kind="RISK",
+                    severity="CRITICAL",
+                    score=SEVERITY_SCORES["CRITICAL"],
+
                     title=".env may be tracked",
                     detail="Project has .env but .gitignore does not mention it.",
                     path=str(env_file),
 
                     explanation=(
                         ".env files usually contain secrets such as database "
-                        "credentials or API keys. If tracked by Git, these "
-                        "secrets may leak."
+                        "credentials or API keys."
                     ),
                     recommendation=(
-                        "Add `.env` to your .gitignore file and rotate any "
-                        "secrets that may have been exposed."
+                        "Add `.env` to your .gitignore file and rotate exposed secrets."
                     ),
                 ))
+
     # --------------------------------------------------
     # 1B) Project structure checks (root-level hygiene)
     # --------------------------------------------------
@@ -198,12 +209,17 @@ def scan_project(
         if not f.exists():
             findings.append(Finding(
                 kind=kind,
+                severity="LOW",
+                score=SEVERITY_SCORES["LOW"],
+
                 title=title,
                 detail=f"{filename} not found in project root.",
                 path=str(f),
+
                 explanation=explanation,
                 recommendation=recommendation,
             ))
+
 
 
     # --------------------------------------------------
@@ -242,25 +258,35 @@ def scan_project(
             if len(line) > 240:
                 findings.append(Finding(
                     kind="INFO",
+                    severity="LOW",
+                    score=SEVERITY_SCORES["LOW"],
+
                     title="Long line",
                     detail=line.strip()[:240],
                     path=str(p),
                     line=i,
+
                     explanation="Very long lines reduce readability and make reviews harder.",
                     recommendation="Consider wrapping the line or refactoring into smaller pieces.",
                 ))
+
 
             # Trailing whitespace (cleanliness)
             if line.rstrip("\n\r") != line.rstrip("\n\r ").rstrip("\t"):
                 findings.append(Finding(
                     kind="INFO",
+                    severity="LOW",
+                    score=SEVERITY_SCORES["LOW"],
+
                     title="Trailing whitespace",
                     detail=line.strip()[:240],
                     path=str(p),
                     line=i,
+
                     explanation="Trailing whitespace creates noisy diffs and reduces code clarity.",
                     recommendation="Trim trailing spaces/tabs (editor setting: trim on save).",
                 ))
+
 
         # ----------------------------------------------
         # TODO / FIXME
@@ -275,6 +301,9 @@ def scan_project(
 
                 findings.append(Finding(
                     kind="TODO",
+                    severity="LOW",
+                    score=SEVERITY_SCORES["LOW"],
+
                     title="Dev note found (TODO/FIXME/HACK/BUG)",
                     detail=line.strip()[:240],
                     path=str(p),
@@ -289,6 +318,7 @@ def scan_project(
                         "or remove the TODO/FIXME if it is no longer needed."
                     ),
                 ))
+
         
 
         # ----------------------------------------------
@@ -302,40 +332,41 @@ def scan_project(
 
                 for pat in SECRET_PATTERNS:
                     if pat.search(line):
-                        severity = "RISK" if mode == SCAN_PROD else "INFO"
                         findings.append(Finding(
-                            kind=severity,
+                            kind="RISK",
+                            severity="CRITICAL" if mode == SCAN_PROD else "HIGH",
+                            score=SEVERITY_SCORES["CRITICAL" if mode == SCAN_PROD else "HIGH"],
+
                             title="Hardcoded secret",
                             detail=line.strip()[:240],
                             path=str(p),
                             line=i,
 
-                            explanation=(
-                                "Hardcoded secrets in source code can be exposed through "
-                                "version control, logs, or error messages."
-                            ),
-                            recommendation=(
-                                "Move this secret to an environment variable or a secure "
-                                "secret manager and remove it from the source code."
-                            ),
+                            explanation="Hardcoded secrets can be exposed through version control.",
+                            recommendation="Move secrets to environment variables or a secret manager.",
                         ))
+
                         break
                 
-                                # ----------------------------------------------
+                # ----------------------------------------------
                 # Debug artifacts (var_dump, print_r, die, dd)
                 # ----------------------------------------------
                 for dbg in DEBUG_ARTIFACTS:
                     if dbg in low:
-                        severity = "RISK" if mode == SCAN_PROD else "INFO"
                         findings.append(Finding(
-                            kind=severity,
+                            kind="RISK",
+                            severity="HIGH" if mode == SCAN_PROD else "MEDIUM",
+                            score=SEVERITY_SCORES["HIGH" if mode == SCAN_PROD else "MEDIUM"],
+
                             title="Debug artifact found",
                             detail=line.strip()[:240],
                             path=str(p),
                             line=i,
+
                             explanation="Debug calls left in code can expose data and break execution flow.",
                             recommendation="Remove debug calls or guard them behind a debug flag.",
                         ))
+
                         break
 
                 # ----------------------------------------------
@@ -345,13 +376,23 @@ def scan_project(
                     if fn in low:
                         severity = "RISK"  # her zaman risk
                         findings.append(Finding(
-                            kind=severity,
+                            kind="RISK",
+                            severity="CRITICAL",
+                            score=SEVERITY_SCORES["CRITICAL"],
+
                             title="Dangerous function usage",
                             detail=line.strip()[:240],
                             path=str(p),
                             line=i,
-                            explanation="Functions like eval/exec/system can lead to RCE if input is not strictly controlled.",
-                            recommendation="Avoid these functions; if unavoidable, validate/escape input and restrict execution.",
+
+                            explanation=(
+                                "Functions like eval/exec/system can lead to remote code execution "
+                                "if input is not strictly controlled."
+                            ),
+                            recommendation=(
+                                "Avoid these functions entirely. If unavoidable, strictly validate "
+                                "input and restrict execution scope."
+                            ),
                         ))
                         break
 
@@ -360,6 +401,9 @@ def scan_project(
                     if ".env" not in p.name.lower():
                         findings.append(Finding(
                             kind="INFO",
+                            severity="LOW",
+                            score=SEVERITY_SCORES["LOW"],
+
                             title="Hardcoded email",
                             detail=line.strip()[:240],
                             path=str(p),
@@ -376,10 +420,15 @@ def scan_project(
                         ))
 
 
+
                 if "display_errors" in low and "ini_set" in low:
-                    severity = "RISK" if mode == SCAN_PROD else "INFO"
+                    sev = "CRITICAL" if mode == SCAN_PROD else "MEDIUM"
+
                     findings.append(Finding(
-                        kind=severity,
+                        kind="RISK",
+                        severity=sev,
+                        score=SEVERITY_SCORES[sev],
+
                         title="display_errors enabled",
                         detail=line.strip()[:240],
                         path=str(p),
@@ -396,17 +445,23 @@ def scan_project(
                     ))
 
 
+
+
                 if "error_reporting" in low and "e_all" in low:
-                    severity = "RISK" if mode == SCAN_PROD else "INFO"
+                    sev = "CRITICAL" if mode == SCAN_PROD else "LOW"
+
                     findings.append(Finding(
-                        kind=severity,
+                        kind="RISK",
+                        severity=sev,
+                        score=SEVERITY_SCORES[sev],
+
                         title="error_reporting(E_ALL)",
                         detail=line.strip()[:240],
                         path=str(p),
                         line=i,
 
                         explanation=(
-                            "error_reporting(E_ALL) may reveal notices and warnings "
+                            "error_reporting(E_ALL) may expose notices and warnings "
                             "that are not intended for end users."
                         ),
                         recommendation=(
@@ -414,6 +469,7 @@ def scan_project(
                             "and use logging for diagnostics."
                         ),
                     ))
+
 
 
         # ----------------------------------------------
@@ -424,6 +480,9 @@ def scan_project(
             if size > 700_000:
                 findings.append(Finding(
                     kind="INFO",
+                    severity="LOW",
+                    score=SEVERITY_SCORES["LOW"],
+
                     title="Large file",
                     detail=f"File is {size / 1024:.0f} KB",
                     path=str(p),
@@ -446,6 +505,73 @@ def scan_project(
     if show_progress:
         _emit_progress(100, mode)
 
+    # --------------------------------------------------
+    # Risk summary (by severity)
+    # --------------------------------------------------
+    risk_summary = {
+        "CRITICAL": 0,
+        "HIGH": 0,
+        "MEDIUM": 0,
+        "LOW": 0,
+    }
+
+    for f in findings:
+        if f.kind == "RISK" and f.severity in risk_summary:
+            risk_summary[f.severity] += 1
+
+    # --------------------------------------------------
+    # Overall risk level
+    # --------------------------------------------------
+    if risk_summary["CRITICAL"] > 0:
+        risk_level = "CRITICAL"
+    elif risk_summary["HIGH"] >= 3:
+        risk_level = "WARNING"
+    elif sum(risk_summary.values()) > 0:
+        risk_level = "REVIEW"
+    else:
+        risk_level = "SAFE"
+
+    # --------------------------------------------------
+    # Human recommendation
+    # --------------------------------------------------
+    if risk_level == "CRITICAL":
+        recommendation = "Fix CRITICAL issues before production deployment."
+    elif risk_level == "WARNING":
+        recommendation = "High-risk issues detected. Review before release."
+    elif risk_level == "REVIEW":
+        recommendation = "Minor risks found. Consider cleanup."
+    else:
+        recommendation = "No significant risks detected. Safe to proceed."
+
+
+
+
+
+    # --------------------------------------------------
+    # Risk score calculation
+    # --------------------------------------------------
+    total_risk_score = sum(
+        f.score for f in findings if f.kind == "RISK"
+    )
+
+
+
+    # --------------------------------------------------
+    # Top risky files
+    # --------------------------------------------------
+    file_risk_map: dict[str, int] = {}
+
+    for f in findings:
+        if f.kind == "RISK":
+            file_risk_map[f.path] = file_risk_map.get(f.path, 0) + f.score
+
+    top_risky_files = [
+        path for path, _ in sorted(
+            file_risk_map.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+    ][:5]
 
     # --------------------------------------------------
     # Done status (for Dashboard "Last Scan Details")
@@ -459,17 +585,40 @@ def scan_project(
     write_status({
         "type": "done",
         "mode": mode,
+
         "last_risks": last_risks,
         "last_todos": last_todos,
+        "risk_score": total_risk_score,
+
+        "risk_summary": risk_summary,
+        "risk_level": risk_level,
+        "recommendation": recommendation,
+        "top_risky_files": top_risky_files,
+
         "files_scanned": scanned_files,
         "duration": round(duration, 2),
         "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     })
 
+
+
     # --------------------------------------------------
     # Sort results
     # --------------------------------------------------
-    priority = {"RISK": 0, "TODO": 1, "INFO": 2}
-    findings.sort(key=lambda f: (priority.get(f.kind, 9), f.path, f.line or 0))
+    severity_order = {
+        "CRITICAL": 0,
+        "HIGH": 1,
+        "MEDIUM": 2,
+        "LOW": 3,
+    }
+
+    findings.sort(
+        key=lambda f: (
+            severity_order.get(f.severity, 9),
+            f.path,
+            f.line or 0,
+        )
+    )
+
 
     return findings

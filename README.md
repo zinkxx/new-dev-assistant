@@ -1,94 +1,97 @@
-# Zinkx Dev Assistant 🛠️
+# New Dev Assistant 🛠️
 
-**Zinkx Dev Assistant**, yazılım projelerini geliştirme sürecinde analiz eden, raporlayan ve geliştiriciye rehberlik eden **Python tabanlı bir masaüstü yardımcı uygulamadır**.
+**New Dev Assistant**, yazılım projelerini analiz eden, potansiyel riskleri ortaya çıkaran ve geliştiriciye proje sağlığı konusunda rehberlik eden **Python tabanlı bir masaüstü geliştirici yardımcısıdır**.
 
-Kod kalitesi, proje sağlığı, riskli noktalar ve yapılması gerekenler konusunda geliştiriciye hızlı ve anlaşılır geri bildirim sunmayı amaçlar.
+Bu proje, önceki denemelerden edinilen tecrübelerle **daha temiz mimari**, **daha sürdürülebilir yapı** ve **genişletilebilirlik** hedefiyle yeniden ele alınmıştır.
 
----
-
-## 🚀 Özellikler
-
-- 🔍 **Proje Tarama (Scanner)**
-
-  - Dosya yapısı analizi
-  - Riskli dosya ve pattern tespiti
-  - Git değişiklikleri analizi
-
-- 📊 **Raporlama Sistemi**
-
-  - HTML rapor üretimi
-  - Detaylı modül bazlı çıktılar
-  - Okunabilir ve görsel odaklı raporlar
-
-- 🧩 **Pre-commit Entegrasyonu**
-
-  - Commit öncesi otomatik kontrol
-  - Riskli durumlarda uyarı
-  - Geliştirici disiplinini artırır
-
-- 🖥️ **Masaüstü Arayüz**
-
-  - Modern Python GUI yapısı
-  - macOS uyumlu dosya/dizin seçici
-  - Ayarlar ve rapor ekranları
-
-- ⚙️ **Esnek Konfigürasyon**
-
-  - `config.py` üzerinden yönetim
-  - IPC tabanlı modüler yapı
+> 🎯 Amaç: _Kodun sadece çalışmasını değil, uzun vadede sağlıklı kalmasını sağlamak._
 
 ---
 
-## 📁 Proje Yapısı
+## 🚀 Temel Özellikler
 
-```
-zinkx-dev-assistant/
-│
-├─ src/
-│  ├─ app.py              # Uygulama giriş noktası
-│  ├─ main_window.py      # Ana pencere (UI)
-│  ├─ scanner.py          # Proje tarama motoru
-│  ├─ report.py           # Rapor veri modeli
-│  ├─ report_html.py      # HTML rapor üretimi
-│  ├─ precommit_runner.py # Pre-commit kontrol sistemi
-│  ├─ git_changed.py      # Git değişiklik analizleri
-│  ├─ settings_ui.py      # Ayarlar arayüzü
-│  ├─ config.py           # Uygulama ayarları
-│  ├─ ipc.py              # Process / IPC iletişimi
-│  └─ macos_picker.py     # macOS dosya seçici
-│
-├─ assets/
-│  ├─ icon.png
-│  └─ icons/
-│
-├─ reports/               # Üretilen raporlar
-│
-└─ README.md
+### 🔍 Proje Analizi (Scanner)
+
+- Dosya ve klasör yapısının taranması
+- Riskli kod alışkanlıklarının ve pattern’lerin tespiti
+- TODO / FIXME / NOTE gibi geliştirici notlarının bulunması
+- Proje köküne göre bağlamsal değerlendirme
+
+### 📊 Raporlama
+
+- Analiz sonuçlarını **HTML rapor** olarak üretir
+- Koyu temalı, modern ve okunabilir arayüz
+- Riskler, uyarılar ve yapılacaklar net şekilde ayrılır
+- Proje adına ve zamana göre otomatik rapor isimlendirme
+
+### 🖥️ Masaüstü Arayüz
+
+- **PySide6 (Qt)** tabanlı native masaüstü uygulaması
+- Dark / Light tema desteği
+- Sade, geliştirici odaklı kullanıcı deneyimi
+- CLI karmaşası olmadan görsel kontrol
+
+### 🛠️ Modüler ve Genişletilebilir Yapı
+
+- Analiz motoru UI’dan ayrıdır
+- Yeni tarama kuralları kolayca eklenebilir
+- Yardımcı script’ler için ayrı `tools/` dizini
+
+---
+
+## 🧠 Mimari Genel Bakış
+
+```text
+src/
+├─ launcher.py        # Uygulama giriş noktası
+├─ app.py             # Ana pencere ve UI yönetimi
+├─ scanner.py         # Proje analiz motoru
+├─ report.py          # HTML rapor üretimi
+├─ config.py          # Yapılandırma ve ayarlar
+└─ ipc.py             # UI ↔ işlem iletişimi
 ```
 
+### Çalışma Akışı
+
+```text
+Kullanıcı → Proje Seçimi
+        → Scanner (analiz)
+        → Finding listesi
+        → Report Generator
+        → HTML Rapor
+```
+
+Bu yapı sayesinde:
+
+- İş mantığı ve arayüz net biçimde ayrılır
+- Test edilebilirlik artar
+- İleride CLI, plugin veya AI destekli modüller eklenebilir
+
 ---
 
-## 🧪 Gereksinimler
+## ⚙️ Kurulum
 
-- Python **3.10+**
-- macOS / Linux / Windows
-- Gerekli paketler:
-
-  ```bash
-  pip install -r requirements.txt
-  ```
-
-> (requirements.txt yoksa, proje büyüdükçe eklenmesi önerilir)
-
----
-
-## ▶️ Çalıştırma
+### 1️⃣ Depoyu Klonla
 
 ```bash
-python src/app.py
+git clone https://github.com/zinkxx/new-dev-assistant.git
+cd new-dev-assistant
 ```
 
-veya
+### 2️⃣ Sanal Ortam Oluştur
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3️⃣ Bağımlılıkları Yükle
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4️⃣ Uygulamayı Çalıştır
 
 ```bash
 python src/launcher.py
@@ -96,46 +99,70 @@ python src/launcher.py
 
 ---
 
-## 🧠 Amaç
+## 🖥️ Sistem Gereksinimleri
 
-Bu proje;
-
-- Geliştiricinin **kod kalitesini yükseltmesini**
-- Proje içinde **riskli alanları erkenden fark etmesini**
-- Daha **disiplinli commit alışkanlıkları** kazanmasını
-
-hedefler.
+- **Python:** 3.10+
+- **İşletim Sistemi:** macOS / Linux / Windows
+- **Önerilen ortam:** macOS + Python 3.12+
 
 ---
 
-## 🧑‍💻 Geliştirici
+## 📂 Proje Yapısı
 
-**Zinkx**
-GitHub: [https://github.com/zinkxx](https://github.com/zinkxx)
+```text
+.
+├─ src/               # Ana uygulama kodları
+├─ assets/            # Stil, ikon ve statik dosyalar
+├─ tools/             # Yardımcı geliştirici script’leri
+├─ requirements.txt   # Python bağımlılıkları
+├─ README.md
+└─ LICENSE
+```
 
 ---
 
-## 📜 Lisans
+## 🧩 Genişletilebilirlik
+
+New Dev Assistant aşağıdaki geliştirmelere açık olacak şekilde tasarlanmıştır:
+
+- 🔌 Plugin tabanlı analiz kuralları
+- 📈 Proje sağlık puanı (scoring system)
+- 🌐 CI/CD entegrasyonu (rapor export)
+- 🧠 AI destekli kod ve yapı önerileri _(planlanan)_
+
+---
+
+## 🛣️ Yol Haritası (Roadmap)
+
+- [ ] Scanner kural setinin genişletilmesi
+- [ ] Analiz seviyeleri (basic / strict / deep)
+- [ ] JSON & Markdown rapor çıktıları
+- [ ] Otomatik periyodik tarama
+- [ ] CLI mod desteği
+
+---
+
+## 🤝 Katkı
+
+Katkılar memnuniyetle karşılanır 🚀
+
+1. Fork oluştur
+2. Feature branch aç (`feature/new-idea`)
+3. Commit at
+4. Pull Request gönder
+
+---
+
+## 📄 Lisans
 
 Bu proje **MIT Lisansı** ile lisanslanmıştır.
-Detaylar için `LICENSE` dosyasına bakınız.
+Detaylar için `LICENSE` dosyasına bakabilirsiniz.
 
 ---
 
-## ⭐ Support the Project
+## ✨ Geliştirici
 
-If you find **Zinkx Dev Assistant** useful:
+**Zinkx**
+💻 Developer • 🛠️ Tool Builder • 🚀 Product-Oriented
 
-- ⭐ Star the repository
-- 🍴 Fork it and improve
-- 🐞 Open issues for bugs or ideas
-- 💬 Share feedback and suggestions
-
-Your support helps the project grow 🚀
-
-## 🖼️ Screenshots
-
-![Dashboard](screenshots/dashboard.png)
-![Scan Project](screenshots/scan-project.png)
-![Reports](screenshots/reports.png)
-![Settings](screenshots/settings.png)
+> New Dev Assistant, gerçek geliştirme süreçlerinde yaşanan sorunlardan yola çıkılarak geliştirilmiştir.

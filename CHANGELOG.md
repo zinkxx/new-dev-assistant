@@ -7,6 +7,25 @@ and this project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
 ---
 
+## [1.9.7] – 2026-01-17
+
+### ✨ Added
+
+- Dashboard Risk Summary (CRITICAL / HIGH / MEDIUM bars)
+- Top 5 Risky Files panel
+- Enhanced Scan Health card with dynamic scoring
+
+### 🔧 Improved
+
+- Risk scoring visualization on dashboard
+- Scan result feedback & performance stats
+- Scan history persistence (last 5 scans)
+
+### 🛡 Security
+
+- Clear separation of Dev vs Prod risk levels
+- Better visibility for critical findings
+
 ## [1.9.6] - 2026-01-17
 
 ### Fixed

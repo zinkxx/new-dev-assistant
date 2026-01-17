@@ -1,11 +1,29 @@
 import json
 import os
+from pathlib import Path
 from typing import Dict, Any
 
 # --------------------------------------------------
-# Config path
+# App paths
 # --------------------------------------------------
+APP_ROOT = Path(__file__).resolve().parent.parent
+VERSION_FILE = APP_ROOT / "VERSION"
+
 CONFIG_PATH = os.path.expanduser("~/.zinkx_dev_assistant/config.json")
+
+# --------------------------------------------------
+# App metadata (read-only, runtime)
+# --------------------------------------------------
+def get_app_version() -> str:
+    try:
+        return VERSION_FILE.read_text(encoding="utf-8").strip()
+    except Exception:
+        return "unknown"
+
+APP_META = {
+    "name": "New Dev Assistant",
+    "version": get_app_version(),
+}
 
 # --------------------------------------------------
 # Default config (single source of truth)

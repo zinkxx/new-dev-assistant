@@ -396,6 +396,7 @@ class MainWindow(QMainWindow):
 
             return w, value
 
+            
 
         card_risk, self.lbl_risk = card("Risks", "⚠️", "Potential security issues")
         card_todo, self.lbl_todo = card("TODOs", "📝", "Code comments & notes")
@@ -406,6 +407,72 @@ class MainWindow(QMainWindow):
         cards.addStretch()
 
         l.addLayout(cards)
+
+        # --------------------------------------------------
+        # Risk Summary (CRITICAL / HIGH / MEDIUM)
+        # --------------------------------------------------
+        risk_box = QWidget()
+        risk_box.setStyleSheet("""
+            QWidget {
+                background: rgba(15,23,42,0.6);
+                border-radius: 14px;
+                padding: 16px;
+                border: 1px solid rgba(148,163,184,0.08);
+            }
+        """)
+
+        risk_layout = QVBoxLayout(risk_box)
+        risk_layout.setSpacing(10)
+
+        risk_layout.addWidget(QLabel("<b>Risk Summary</b>"))
+
+        def risk_row(label: str, color: str):
+            row = QWidget()
+            lay = QVBoxLayout(row)
+            lay.setSpacing(4)
+
+            top = QHBoxLayout()
+            lbl = QLabel(label)
+            val = QLabel("0")
+            val.setStyleSheet("font-weight:700;")
+
+            top.addWidget(lbl)
+            top.addStretch()
+            top.addWidget(val)
+
+            bar = QProgressBar()
+            bar.setTextVisible(False)
+            bar.setFixedHeight(6)
+            bar.setMaximum(10)
+            bar.setValue(0)
+
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    background: rgba(255,255,255,0.08);
+                    border-radius: 3px;
+                }}
+                QProgressBar::chunk {{
+                    background: {color};
+                    border-radius: 3px;
+                }}
+            """)
+
+            lay.addLayout(top)
+            lay.addWidget(bar)
+
+            return row, bar, val
+
+        # satırlar
+        row_c, self.bar_critical, self.val_critical = risk_row("CRITICAL", "#ef4444")
+        row_h, self.bar_high,     self.val_high     = risk_row("HIGH", "#f97316")
+        row_m, self.bar_medium,   self.val_medium   = risk_row("MEDIUM", "#facc15")
+
+        risk_layout.addWidget(row_c)
+        risk_layout.addWidget(row_h)
+        risk_layout.addWidget(row_m)
+
+        # ✅ EN KRİTİK SATIR: bunu eklemezsen görünmez!
+        l.addWidget(risk_box)
 
         # --------------------------------------------------
         # Health Score (Enhanced)
@@ -1455,6 +1522,32 @@ class MainWindow(QMainWindow):
 
         self.lbl_risk.setText(str(st["last_risks"]))
         self.lbl_todo.setText(str(st["last_todos"]))
+        # -------------------------------
+        # Risk Summary Bars (Dashboard)
+        # -------------------------------
+        summary = st.get("risk_summary", {}) or {}
+
+        crit = int(summary.get("CRITICAL", 0))
+        high = int(summary.get("HIGH", 0))
+        med  = int(summary.get("MEDIUM", 0))
+
+        max_val = max(crit, high, med, 1)
+
+        # scale
+        self.bar_critical.setMaximum(max_val)
+        self.bar_high.setMaximum(max_val)
+        self.bar_medium.setMaximum(max_val)
+
+        # values
+        self.bar_critical.setValue(crit)
+        self.bar_high.setValue(high)
+        self.bar_medium.setValue(med)
+
+        # labels
+        self.val_critical.setText(str(crit))
+        self.val_high.setText(str(high))
+        self.val_medium.setText(str(med))
+
         # ---- Top risky files (if provided)
         files = st.get("top_risky_files", [])
 
