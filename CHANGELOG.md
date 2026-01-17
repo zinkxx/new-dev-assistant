@@ -7,6 +7,23 @@ and this project follows **Semantic Versioning** (`MAJOR.MINOR.PATCH`).
 
 ---
 
+## v1.9.9 – Stable Release
+
+### Fixed
+
+- Corrected Finding model initialization
+- Resolved scanner runtime errors
+- Improved risk scoring stability
+
+### Added
+
+- Dashboard Risk Summary (CRITICAL / HIGH / MEDIUM)
+- Health scoring improvements
+
+### Internal
+
+- Release workflow stabilization
+
 ## [1.9.7] – 2026-01-17
 
 ### ✨ Added
