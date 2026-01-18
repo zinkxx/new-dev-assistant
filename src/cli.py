@@ -1,8 +1,44 @@
 import argparse
+import json
+from datetime import datetime
 from pathlib import Path
 
 from scanner import scan_project, SCAN_DEV, SCAN_PROD
 from report_html import write_html_report
+
+
+def export_json(findings, project_root, scan_mode):
+    output = {
+        "meta": {
+            "project_root": project_root,
+            "scan_mode": scan_mode,
+            "generated_at": datetime.now().isoformat(),
+        },
+        "summary": {
+            "risks": sum(1 for f in findings if f.kind == "RISK"),
+            "todos": sum(1 for f in findings if f.kind == "TODO"),
+        },
+        "findings": [
+            {
+                "kind": f.kind,
+                "severity": f.severity,
+                "score": f.score,
+                "title": f.title,
+                "detail": f.detail,
+                "path": f.path,
+                "line": f.line,
+                "explanation": f.explanation,
+                "recommendation": f.recommendation,
+            }
+            for f in findings
+        ],
+    }
+
+    out_path = Path(project_root) / "scan_report.json"
+    with out_path.open("w", encoding="utf-8") as f:
+        json.dump(output, f, indent=2)
+
+    return out_path
 
 
 def run_cli():
@@ -22,6 +58,12 @@ def run_cli():
         choices=["dev", "prod"],
         default="dev",
         help="Scan mode (default: dev)"
+    )
+
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Export scan results as JSON"
     )
 
     args = parser.parse_args()
@@ -45,6 +87,14 @@ def run_cli():
         project_root=str(project_path)
     )
 
+    json_path = None
+    if args.json:
+        json_path = export_json(
+            findings=findings,
+            project_root=str(project_path),
+            scan_mode=args.mode,
+        )
+
     # ---- CLI summary ----
     risks = sum(1 for f in findings if f.kind == "RISK")
     todos = sum(1 for f in findings if f.kind == "TODO")
@@ -55,5 +105,8 @@ def run_cli():
     print(f"Scan mode         : {args.mode}")
     print(f"Scanned directory : {project_path}")
     print(f"HTML report       : {report_path}")
+
+    if json_path:
+        print(f"JSON report       : {json_path}")
 
     print("\n[✓] Scan completed successfully")
