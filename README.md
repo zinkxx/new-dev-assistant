@@ -96,5 +96,8 @@ MIT License
 ## ✨ Geliştirici
 
 **Zinkx**
+docs/readme-v2
 
 > Baseline documentation as of v2.0.0
+
+main
