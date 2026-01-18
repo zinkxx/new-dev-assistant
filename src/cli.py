@@ -50,8 +50,11 @@ def run_cli():
     todos = sum(1 for f in findings if f.kind == "TODO")
 
     print("\n=== Scan Summary ===")
-    print(f"Risks found : {risks}")
-    print(f"TODOs found : {todos}")
-    print(f"Report path : {report_path}")
+    print(f"Risks found       : {risks}")
+    print(f"TODOs found       : {todos}")
+    print(f"Scan mode         : {args.mode}")
+    print(f"Scanned directory : {project_path}")
+    print(f"HTML report       : {report_path}")
+
 
     print("\n[✓] Scan completed successfully")
