@@ -56,5 +56,4 @@ def run_cli():
     print(f"Scanned directory : {project_path}")
     print(f"HTML report       : {report_path}")
 
-
     print("\n[✓] Scan completed successfully")
